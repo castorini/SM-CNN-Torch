@@ -9,7 +9,7 @@ require('lfs')
 
 similarityMeasure = {}
 
-include('util/read_data.lua')
+include('util/read_data_gpu.lua')
 include('util/Vocab.lua')
 include('ConvGPU.lua')
 include('CsDis.lua')
