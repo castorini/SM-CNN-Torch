@@ -25,7 +25,7 @@ function Conv:__init(config)
 
   -- Negative Log Likelihood optimization objective
   self.criterion = nn.ClassNLLCriterion():cuda();
-  dofile 'models.sigir15GPU.lua'
+  dofile 'modelsGPU.lua'
   local modelName = 'SIGIR'
   self.ngram = 3
   self.length = self.emb_dim
