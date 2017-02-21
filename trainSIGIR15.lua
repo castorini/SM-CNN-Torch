@@ -62,10 +62,10 @@ local vocab = similarityMeasure.Vocab(data_dir .. 'vocab.txt')
 -- load embeddings
 print('loading word embeddings')
 
-local emb_dir = '/scratch0/huah/textSimilarityConvNet/data/glove/'
+--local emb_dir = 'data/embedding/'
+--local emb_prefix = emb_dir .. 'aquaint.word2vec'
+local emb_dir = '../char-lstm/data/glove/'
 local emb_prefix = emb_dir .. 'glove.840B'
---local emb_dir = 'data/glove/'
---local emb_prefix = emb_dir .. 'glove.840B'
 local emb_vocab, emb_vecs = similarityMeasure.read_embedding(emb_prefix .. '.vocab', emb_prefix .. '.300d.th')
 
 local emb_dim = emb_vecs:size(2)
@@ -90,7 +90,7 @@ local taskD = 'qa'
 -- load datasets
 print('loading datasets' .. opt.dataset)
 if opt.dataset == 'TrecQA' then
-  train_dir = data_dir .. 'train-all/'
+  train_dir = data_dir .. 'train/'
   dev_dir = data_dir .. opt.version .. '-dev/'
   test_dir = data_dir .. opt.version .. '-test/'
 elseif opt.dataset == 'WikiQA' then

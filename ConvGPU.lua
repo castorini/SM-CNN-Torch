@@ -3,7 +3,7 @@ local Conv = torch.class('similarityMeasure.Conv')
 function Conv:__init(config)
   self.mem_dim       = config.mem_dim       or 150 --200
   self.learning_rate = config.learning_rate or 0.01
-  self.batch_size    = config.batch_size    or 1
+  self.batch_size    = config.batch_size    or 32
   self.num_layers    = config.num_layers    or 1
   self.reg           = config.reg           or 1e-5
   self.structure     = config.structure     or 'lstm' -- {lstm, bilstm}
@@ -31,6 +31,7 @@ function Conv:__init(config)
   self.length = self.emb_dim
   self.convModel = createModel(modelName, 10000, self.length, self.num_classes, self.ngram)
   ----------------------------------------
+  self.convModel:cuda()
   self.params, self.grad_params = self.convModel:getParameters()
   print(self.convModel:parameters()[1]:norm(), self.grad_params:norm())
   print(self.convModel:parameters()[1]:norm(), self.params:norm())
@@ -39,7 +40,6 @@ end
 
 function Conv:trainCombineOnly(dataset)
   local train_looss = 0.0
-
   self.convModel:cuda()
   self.criterion:cuda()
   local indices = torch.randperm(dataset.size)
@@ -95,11 +95,11 @@ function Conv:trainCombineOnly(dataset)
       sim_grad = self.criterion:backward(output, batch_targets)
       train_looss = loss + train_looss
       self.convModel:backward({linputs, rinputs}, sim_grad)
-      print(i, loss, self.params:norm(), self.grad_params:norm())
-      print(output, batch_targets, sim_grad, self.convModel:parameters()[1]:norm())
+      --print(i, loss, self.params:norm(), self.grad_params:norm())
+      --print(output, batch_targets, sim_grad, self.convModel:parameters()[1]:norm())
       -- regularization
-      --loss = loss + 0.5 * self.reg * self.params:norm() ^ 2
-      --self.grad_params:add(self.reg, self.params)
+      loss = loss + 0.5 * self.reg * self.params:norm() ^ 2
+      self.grad_params:add(self.reg, self.params)
       return loss, self.grad_params
     end
     _, fs  = optim.sgd(feval, self.params, self.optim_state)

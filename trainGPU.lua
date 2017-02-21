@@ -63,7 +63,7 @@ vocab:add_unk_token()
 -- load embeddings
 print('loading word embeddings')
 
-local emb_dir = 'data/glove/'
+local emb_dir = '../char-lstm/data/glove/'
 local emb_prefix = emb_dir .. 'glove.840B'
 --local emb_dir = 'data/glove/'
 --local emb_prefix = emb_dir .. 'glove.840B'
