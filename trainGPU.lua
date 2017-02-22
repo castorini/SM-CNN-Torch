@@ -1,5 +1,6 @@
 require('torch')
 require('nn')
+require('cunn')
 require('nngraph')
 require('optim')
 require('xlua')
@@ -8,9 +9,9 @@ require('lfs')
 
 similarityMeasure = {}
 
-include('util/read_data.lua')
+include('util/read_data_gpu.lua')
 include('util/Vocab.lua')
-include('Conv.lua')
+include('ConvGPU.lua')
 include('CsDis.lua')
 include('metric.lua')
 printf = utils.printf
@@ -57,22 +58,22 @@ end
 local data_dir = 'data/' .. opt.dataset .. '/'
 
 -- load vocab
-local vocab = similarityMeasure.Vocab(data_dir .. 'vocab.txt')
-
+local vocab = similarityMeasure.Vocab('data/TrecQA/vocab.txt')
+vocab:add_unk_token()
 -- load embeddings
 print('loading word embeddings')
 
---local emb_dir = 'data/embedding/'
---local emb_prefix = emb_dir .. 'aquaint.word2vec'
 local emb_dir = '../char-lstm/data/glove/'
 local emb_prefix = emb_dir .. 'glove.840B'
+--local emb_dir = 'data/glove/'
+--local emb_prefix = emb_dir .. 'glove.840B'
 local emb_vocab, emb_vecs = similarityMeasure.read_embedding(emb_prefix .. '.vocab', emb_prefix .. '.300d.th')
 
 local emb_dim = emb_vecs:size(2)
 
 -- use only vectors in vocabulary (not necessary, but gives faster training)
 local num_unk = 0
-local vecs = torch.Tensor(vocab.size, emb_dim)
+local vecs = torch.Tensor(vocab.size, emb_dim):cuda()
 for i = 1, vocab.size do
   local w = vocab:token(i)
   if emb_vocab:contains(w) then
@@ -90,7 +91,7 @@ local taskD = 'qa'
 -- load datasets
 print('loading datasets' .. opt.dataset)
 if opt.dataset == 'TrecQA' then
-  train_dir = data_dir .. 'train/'
+  train_dir = data_dir .. 'train-all/'
   dev_dir = data_dir .. opt.version .. '-dev/'
   test_dir = data_dir .. opt.version .. '-test/'
 elseif opt.dataset == 'WikiQA' then
@@ -102,6 +103,9 @@ end
 local train_dataset = similarityMeasure.read_relatedness_dataset(train_dir, vocab, taskD)
 local dev_dataset = similarityMeasure.read_relatedness_dataset(dev_dir, vocab, taskD)
 local test_dataset = similarityMeasure.read_relatedness_dataset(test_dir, vocab, taskD)
+similarityMeasure.padding(train_dataset, vocab)
+similarityMeasure.padding(dev_dataset, vocab)
+similarityMeasure.padding(test_dataset, vocab)
 printf('train_dir: %s, num train = %d\n', train_dir, train_dataset.size)
 printf('dev_dir: %s, num dev   = %d\n', dev_dir, dev_dataset.size)
 printf('test_dir: %s, num test  = %d\n', test_dir, test_dataset.size)
@@ -146,11 +150,21 @@ for i = 1, num_epochs do
   print('--------------- EPOCH ' .. i .. '--- -------------')
   model:trainCombineOnly(train_dataset)
   print('Finished epoch in ' .. ( sys.clock() - start) )
-  
+
   local dev_predictions = model:predict_dataset(dev_dataset)
   local dev_map_score = map(dev_predictions, dev_dataset.labels, dev_dataset.boundary, dev_dataset.numrels)
   local dev_mrr_score = mrr(dev_predictions, dev_dataset.labels, dev_dataset.boundary, dev_dataset.numrels)
   printf('-- dev map score: %.5f, mrr score: %.5f\n', dev_map_score, dev_mrr_score)
+
+  if dev_map_score >= best_dev_score then
+    best_dev_score = dev_map_score
+    torch.save('trecqa-sigir15-model.net', model)
+    local new_model = torch.load('trecqa-sigir15-model.net')
+    local dev_predictions = new_model:predict_dataset(dev_dataset)
+    local dev_map_score = map(dev_predictions, dev_dataset.labels, dev_dataset.boundary, dev_dataset.numrels)
+    local dev_mrr_score = mrr(dev_predictions, dev_dataset.labels, dev_dataset.boundary, dev_dataset.numrels)
+    printf('-- dev map score: %.5f, mrr score: %.5f\n', dev_map_score, dev_mrr_score)
+  end
 
  -- if dev_map_score >= best_dev_score then
     best_dev_score = dev_map_score
@@ -160,7 +174,7 @@ for i = 1, num_epochs do
     printf('-- test map score: %.4f, mrr score: %.4f\n', test_map_score, test_mrr_score)
 
     local predictions_save_path = string.format(
-	similarityMeasure.predictions_dir .. '/results-%s.%dl.%dd.epoch-%d.%.5f.%d.pred', args.model, args.layers, args.dim, i, test_map_score, id)
+        similarityMeasure.predictions_dir .. '/results-%s.%dl.%dd.epoch-%d.%.5f.%d.pred', args.model, args.layers, args.dim, i, test_map_score, id)
     local predictions_file = torch.DiskFile(predictions_save_path, 'w')
     print('writing predictions to ' .. predictions_save_path)
     for i = 1, test_predictions:size(1) do

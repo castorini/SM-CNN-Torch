@@ -16,7 +16,7 @@ while true do
   line = file:read()
   if not line then break end
   if count == 0 then
-    dim = #stringx.split(line) - 1
+    dim = #stringx.split(line)-1
   end
   count = count + 1
 end
