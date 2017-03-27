@@ -1,4 +1,4 @@
-function createModel(mdl, vocsize, Dsize, nout, KKw, ext_feat_size)
+function createModel(mdl, vocsize, Dsize, nout, KKw, ext_feat_size, dist)
     local D     = Dsize --opt.dimension
     local kW    = KKw --opt.kwidth
     local dW    = 1 -- opt.dwidth
@@ -29,22 +29,48 @@ function createModel(mdl, vocsize, Dsize, nout, KKw, ext_feat_size)
 	
 	local linput, rinput, ext_feats = nn.Identity()(), nn.Identity()(), nn.Identity()()
 	--local inputs = {linput, rinput}
-	local bi_dist = nn.Bilinear(NumFilter, NumFilter, 1, false){linput, rinput}
+        local sim_feat = nil
+        if dist == 'bilinear' then
+          print('bilinear distance')
+          sim_feat = nn.Bilinear(NumFilter, NumFilter, 1, false){linput, rinput}
+        elseif dist == 'cos' then
+          print('cosine distance')
+          sim_feat = nn.CosineDistance(){linput, rinput}
+        elseif dist == 'dot' then
+          print('dot distance')
+          sim_feat = nn.DotProduct(){linput, rinput} 
+        else
+          print('none distance')
+        end
         --local vec_feats = nn.JoinTable(1){nn.View(-1)(linput), nn.View(-1)(rinput), bi_dist}
- 	local vecs_nn = nil
+ 	local vec_feats, vecs_nn = nil, nil
         if ext_feat_size > 0 then
           print('use ext feature in models.lua')
           local inputs = {linput, rinput, ext_feats}
-	  local vec_feats = nn.JoinTable(1){nn.View(-1)(linput), nn.View(-1)(rinput), bi_dist, nn.View(-1)(ext_feats)}
-	  vecs_nn = nn.gModule(inputs, {vec_feats})
+          if sim_feat == nil then
+	    vec_feats = nn.JoinTable(1){nn.View(-1)(linput), nn.View(-1)(rinput), nn.View(-1)(ext_feats)}
+          else
+            vec_feats = nn.JoinTable(1){nn.View(-1)(linput), nn.View(-1)(rinput), nn.View(-1)(sim_feat), nn.View(-1)(ext_feats)} 
+          end
+          vecs_nn = nn.gModule(inputs, {vec_feats})
         else
           local inputs = {linput, rinput}
-          local vec_feats = nn.JoinTable(1){nn.View(-1)(linput), nn.View(-1)(rinput), bi_dist}
+          if sim_feat == nil then
+            vec_feats = nn.JoinTable(1){nn.View(-1)(linput), nn.View(-1)(rinput)}
+          else
+            vec_feats = nn.JoinTable(1){nn.View(-1)(linput), nn.View(-1)(rinput), nn.View(-1)(sim_feat)}
+          end
           vecs_nn = nn.gModule(inputs, {vec_feats})    
         end
-	--local vecs_nn = nn.gModule(inputs, {vec_feats})
+        local nlinear = 0
+        if dist == 'bilinear' or dist == 'cos' or dist == 'dot' then
+          nlinear = 2*NumFilter+ext_feat_size+1
+        elseif dist == 'none' then
+          nlinear = 2*NumFilter+ext_feat_size
+        end
+
 	deepQuery:add(vecs_nn)     
-	deepQuery:add(nn.Linear(2*NumFilter+1+ext_feat_size, nhid1))
+	deepQuery:add(nn.Linear(nlinear, nhid1))
 	deepQuery:add(nn.Tanh())
 	deepQuery:add(nn.Dropout(0.5))
 	deepQuery:add(nn.Linear(nhid1, nout))

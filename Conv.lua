@@ -9,10 +9,17 @@ function Conv:__init(config)
   self.structure     = config.structure     or 'lstm' -- {lstm, bilstm}
   self.sim_nhidden   = config.sim_nhidden   or 150
   self.task          = config.task          or 'twitter' --'twitter'  -- or 'vid'
+  self.ext_feat      = config.ext_feat      or false
+  self.sim_metric    = config.sim_metric    or 'bilinear'
 	
   -- word embedding
   self.emb_vecs = config.emb_vecs
   self.emb_dim = config.emb_vecs:size(2)
+  
+  self.ext_feat_size = 0
+  if self.ext_feat == true and self.task == 'qa' then
+    self.ext_feat_size = 4
+  end
 
   -- number of similarity rating classes
   if self.task=='qa' then
@@ -30,12 +37,21 @@ function Conv:__init(config)
   local modelName = 'SIGIR'
   self.ngram = 5
   self.length = self.emb_dim
-  self.convModel = createModel(modelName, 10000, self.length, self.num_classes, self.ngram)  
-  
+  self.convModel = createModel(modelName, 10000, self.length, self.num_classes, self.ngram, self.ext_feat_size, self.sim_metric)  
+  --self.linearLayer = self:linearLayer()   
   ----------------------------------------
   self.params, self.grad_params = self.convModel:getParameters()
 end
 
+function Conv:linearLayer()
+  local toplayer = nn.Sequential()
+  toplayer:add(nn.Linear(4, 201))
+  toplayer:add(nn.Tanh())
+  toplayer:add(nn.Dropout(0.5))
+  toplayer:add(nn.Linear(201, self.num_classes))
+  toplayer:add(nn.LogSoftMax())
+  return toplayer
+end
 
 function Conv:trainCombineOnly(dataset)
   train_looss = 0.0
@@ -72,7 +88,13 @@ function Conv:trainCombineOnly(dataset)
         local lsent, rsent = dataset.lsents[idx], dataset.rsents[idx]
         local linputs = self.emb_vecs:index(1, lsent:long()):double()
         local rinputs = self.emb_vecs:index(1, rsent:long()):double()
-   	local output = self.convModel:forward({linputs, rinputs})
+        local output = nil
+        if self.ext_feat == false then
+   	  output = self.convModel:forward({linputs, rinputs})
+        else
+          output = self.convModel:forward({linputs, rinputs, dataset.ranks[idx]})
+          --output = self.linearLayer:forward(dataset.ranks[idx])
+        end
         local sim_grad = 0
         if self.task == 'vid' or self.task == 'sic' then
 	  error("Not possible")
@@ -81,7 +103,12 @@ function Conv:trainCombineOnly(dataset)
           sim_grad = self.criterion:backward(output, sim)
 	end
 	train_looss = loss + train_looss
-	self.convModel:backward({linputs, rinputs}, sim_grad)
+	if self.ext_feat == false then
+          self.convModel:backward({linputs, rinputs}, sim_grad)
+        else
+          self.convModel:backward({linputs, rinputs, dataset.ranks[idx]}, sim_grad)
+          --self.linearLayer:backward(dataset.ranks[idx], sim_grad)
+        end
       end
       -- regularization
       loss = loss + 0.5 * self.reg * self.params:norm() ^ 2
@@ -95,11 +122,16 @@ function Conv:trainCombineOnly(dataset)
 end
 
 -- Predict the similarity of a sentence pair.
-function Conv:predictCombination(lsent, rsent)
+function Conv:predictCombination(lsent, rsent, ext_feat)
   local linputs = self.emb_vecs:index(1, lsent:long()):double()
   local rinputs = self.emb_vecs:index(1, rsent:long()):double()
-
-  local output = self.convModel:forward({linputs, rinputs})
+  
+  if self.ext_feat == false then
+    output = self.convModel:forward({linputs, rinputs})
+  else
+    output = self.convModel:forward({linputs, rinputs, ext_feat})
+    --output = self.linearLayer:forward(ext_feat)
+  end
   local val = -1.0
   if self.task == 'sic' then
     val = torch.range(1, 5, 1):dot(output:exp())
@@ -119,7 +151,7 @@ function Conv:predict_dataset(dataset)
   local predictions = torch.Tensor(dataset.size)
   for i = 1, dataset.size do
     local lsent, rsent = dataset.lsents[i], dataset.rsents[i]
-    predictions[i] = self:predictCombination(lsent, rsent)
+    predictions[i] = self:predictCombination(lsent, rsent, dataset.ranks[i])
   end
   return predictions
 end

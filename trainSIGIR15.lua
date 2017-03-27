@@ -30,6 +30,9 @@ cmd = torch.CmdLine()
 cmd:text('Options')
 cmd:option('-dataset', 'TrecQA', 'dataset, can be TrecQA or WikiQA')
 cmd:option('-version', 'raw', 'the version of TrecQA dataset, can be raw and clean')
+cmd:option('-train', 'train', 'train or train-all')
+cmd:option('-ext', false, 'whether use the external feature')
+cmd:option('-sim', 'bilinear', 'the similarity matrix')
 cmd:text()
 opt = cmd:parse(arg)
 
@@ -90,7 +93,7 @@ local taskD = 'qa'
 -- load datasets
 print('loading datasets' .. opt.dataset)
 if opt.dataset == 'TrecQA' then
-  train_dir = data_dir .. 'train/'
+  train_dir = data_dir .. opt.train .. '/'
   dev_dir = data_dir .. opt.version .. '-dev/'
   test_dir = data_dir .. opt.version .. '-test/'
 elseif opt.dataset == 'WikiQA' then
@@ -113,6 +116,8 @@ local model = model_class{
   num_layers = args.layers,
   mem_dim    = args.dim,
   task       = taskD,
+  ext_feat   = opt.ext,
+  sim_metric = opt.sim
 }
 
 -- number of epochs to train

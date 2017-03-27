@@ -42,17 +42,17 @@ function Conv:__init(config)
   self.NumFilter = 100
   self.nhid1 = 2*self.NumFilter+1+1
   self.length = self.emb_dim
-  --self.convModel = createModel(modelName, 10000, self.length, self.num_classes, self.ngram, self.ext_feat_size)  
-  self.convModel = self:paraConv()
-  self.bilinearLayer = self:bilinear()
+  self.convModel = createModel(modelName, 10000, self.length, self.num_classes, self.ngram, self.ext_feat_size)  
+  --self.convModel = self:paraConv()
+  --self.bilinearLayer = self:bilinear()
   self.model = nn.Sequential()
   self.model:add(self.convModel)
-  self.model:add(self.bilinearLayer)
-  self.linearLayer = self:linearLayer()
+  --self.model:add(self.bilinearLayer)
+  --self.linearLayer = self:linearLayer()
   local modules = nn.Parallel()
     :add(self.convModel)
-    :add(self.bilinearLayer)
-    :add(self.linearLayer) 
+    --:add(self.bilinearLayer)
+    --:add(self.linearLayer) 
   ----------------------------------------
   self.params, self.grad_params = modules:getParameters()
 end
@@ -108,7 +108,7 @@ function Conv:trainCombineOnly(dataset)
   local indices = torch.randperm(dataset.size)
   local zeros = torch.zeros(self.mem_dim)
   self.model:training()
-  self.linearLayer:training()
+  --self.linearLayer:training()
   for i = 1, dataset.size, self.batch_size do
     --if i%10 == 1 then
     --	    xlua.progress(i, dataset.size)
@@ -142,11 +142,12 @@ function Conv:trainCombineOnly(dataset)
         --print(conv_output[1], conv_output[2])
         --local bilinear_score = self.bilinearLayer:forward(conv_output)
         --local bilinear_feat = torch.cat({conv_output[1], conv_output[2], bilinear_score, dataset.ranks[idx]}, 2)
-        local bilinear_output = self.model:forward({linputs, rinputs})
+        --local bilinear_output = self.model:forward({linputs, rinputs})
         --local bilinear_feat = torch.cat(bilinear_output, dataset.ranks[idx])
-        local bilinear_feat = bilinear_output
+        --local bilinear_feat = bilinear_output
         --print(bilinear_output:size(), bilinear_feat:size())
-        local output = self.linearLayer:forward(bilinear_feat)
+        --local output = self.linearLayer:forward(bilinear_feat)
+        local output = self.model:forward({linputs, rinputs, dataset.ranks[idx]})
         local sim_grad = 0
         if self.task == 'vid' or self.task == 'sic' then
           loss = self.criterion:forward(output, targets[1])
@@ -160,16 +161,17 @@ function Conv:trainCombineOnly(dataset)
         --print(output:exp(), sim, loss, sim_grad)
 	--print(self.params:norm())
         train_looss = loss + train_looss
-        local linear_feat_grad = self.linearLayer:backward(bilinear_feat, sim_grad)
+        --local linear_feat_grad = self.linearLayer:backward(bilinear_feat, sim_grad)
         --local linear_grad = linear_feat_grad:narrow(1, 1, 1)
         --local linear_grad = linear_feat_grad:narrow(1, 1, 2*self.NumFilter+1)
-        local linear_grad = linear_feat_grad
+        --local linear_grad = linear_feat_grad
         --print(linear_feat_grad:size(), linear_grad:size())
         --local bilinear_grad = self.bilinearLayer:backward(conv_output, linear_feat_grad:narrow(2, 2*self.NumFilter+1, 1))
         --self.convModel:backward({linputs, rinputs}, linear_feat_grad:narrow(2, 1, 2*self.NumFilter))
         --self.convModel:backward({linputs, rinputs}, bilinear_grad)
         --print(linear_feat_grad, linear_grad)
-        self.model:backward({linputs, rinputs}, linear_grad)
+        --self.model:backward({linputs, rinputs}, linear_grad)
+        self.model:backward({linputs, rinputs, dataset.ranks[idx]}, sim_grad)
       end
       -- regularization
       loss = loss + 0.5 * self.reg * self.params:norm() ^ 2
@@ -186,10 +188,11 @@ end
 function Conv:predictCombination(lsent, rsent, ext_feat)
   local linputs = self.emb_vecs:index(1, lsent:long()):double()
   local rinputs = self.emb_vecs:index(1, rsent:long()):double()
-  local bilinear_output = self.model:forward({linputs, rinputs})
+  --local bilinear_output = self.model:forward({linputs, rinputs})
   --local bilinear_feat = torch.cat(bilinear_output, ext_feat)
-  local bilinear_feat = bilinear_output
-  local output = self.linearLayer:forward(bilinear_feat)
+  --local bilinear_feat = bilinear_output
+  --local output = self.linearLayer:forward(bilinear_feat)
+  local output = self.model:forward({linputs, rinputs, ext_feat})
   local val = -1.0
   if self.task == 'sic' then
     val = torch.range(1, 5, 1):dot(output:exp())
@@ -206,7 +209,7 @@ end
 -- Produce similarity predictions for each sentence pair in the dataset.
 function Conv:predict_dataset(dataset)
   self.model:evaluate()
-  self.linearLayer:evaluate()
+  --self.linearLayer:evaluate()
   local predictions = torch.Tensor(dataset.size)
   for i = 1, dataset.size do
     local lsent, rsent, feat = dataset.lsents[i], dataset.rsents[i], dataset.ranks[i]

@@ -119,7 +119,7 @@ function similarityMeasure.read_relatedness_dataset(dir, vocab, task, all_tweets
     end
   end
   if task == 'qa' then
-    f_wordlap = io.open(dir .. 'word_overlap.txt', 'r')
+    f_wordlap = io.open(dir .. 'overlap_feats.txt', 'r')
     for i = 1, dataset.size do
       wordlap_feat = stringx.split(f_wordlap:read(), " ")
       dataset.ranks[i] = torch.Tensor(4)

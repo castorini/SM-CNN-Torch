@@ -67,9 +67,9 @@ end
 -- load vocab
 
 -- load embeddings
-local emb_dir = '/scratch1/jinfeng/DNN/data/glove/'
-local emb_prefix = emb_dir .. 'glove.840B'
-local dim = '.300d'
+local emb_dir = 'data/embedding/'
+local emb_prefix = emb_dir .. 'aquaint.word2vec'
+local dim = '.50d'
 if opt.dataset == 'Trec' then
   emb_dir = 'data/embedding/'
   emb_prefix = emb_dir .. 'twitter.word2vec'
@@ -92,7 +92,7 @@ for i = 1, vocab.size do
   else
     num_unk = num_unk + 1
     vecs[i]:uniform(-0.25, 0.25)
-    unknown_vecs[w] = vocab:freq(i)
+    unknown_vecs[w] = 1
   end
 end
 print('unk count = ' .. num_unk)
