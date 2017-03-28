@@ -3,14 +3,15 @@ import os
 import numpy as np
 #from nltk.corpus import stopwords
 from collections import defaultdict
+from sklearn.preprocessing import StandardScaler
 
 def load_data(dname):
   qids, questions, answers, labels = [], [], [], []
-  with open(dname+'a.toks') as f:
+  with open(dname+'tokenize_query2.txt') as f:
     for line in f:
       question = line.strip().split()
       questions.append(question)
-  with open(dname+'b.toks') as f:
+  with open(dname+'tokenize_doc2.txt') as f:
     for line in f:
       answer = line.strip().split()
       answers.append(answer)
@@ -95,6 +96,20 @@ def compute_dfs(docs):
     word2df[w] /= np.math.log(num_docs / value)
   return word2df
 
+def save_dfs(word2df, filepath):
+  scaler = StandardScaler()
+  num_words = len(word2df.keys())
+  words, values = [], []
+  for w, value in word2df.iteritems():
+    words.append(w)
+    values.append(value)
+  values = np.asarray(values).reshape((num_words, 1))
+  print "Scaling overlap document frequency"
+  values = scaler.fit_transform(values)
+  with open(filepath, 'w') as f:
+    for i in range(num_words):
+      f.write("%s %.4f\n" % (words[i], values[i][0]))
+
 if __name__ == '__main__':
   stoplist = set([line.strip() for line in open('stopwords.txt')])
   import string
@@ -103,8 +118,8 @@ if __name__ == '__main__':
   #stoplist = None 
  
   all_questions, all_answers, all_qids = [], [], []
-  base_dir = 'data/TrecQA/'
-  sub_dirs = ['train/', 'train-all/', 'raw-dev/', 'raw-test/']
+  base_dir = '../DNN/data/twitter/order_by_rel/'
+  sub_dirs = ['train_2013/', 'test_2013/', 'dev_2013/']
   for sub in sub_dirs:
     qids, questions, answers, labels = load_data(base_dir+sub)
     all_questions.extend(questions)
@@ -120,6 +135,7 @@ if __name__ == '__main__':
   
   docs = all_answers + unique_questions
   word2dfs = compute_dfs(docs)
+  save_dfs(word2dfs, base_dir+'word2dfs_2013.txt')
   print word2dfs.items()[:10]
 
   q_max_sent_length = max(map(lambda x: len(x), all_questions))
@@ -137,7 +153,6 @@ if __name__ == '__main__':
     print overlap_feats[:3]
     print 'overlap_feats', overlap_feats.shape
     
-    from sklearn.preprocessing import StandardScaler
     scaler = StandardScaler()
     print "Scaling overlap features"
     overlap_feats = scaler.fit_transform(overlap_feats)
