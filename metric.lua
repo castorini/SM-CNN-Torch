@@ -57,7 +57,7 @@ function map(score, qrels, boundary, num_rels)
   return map_score/(boundary:size(1)-1)
 end
 
-function p_30(score, qrels, boundary)
+function p_rank(score, qrels, boundary, rank)
   local p30_score = 0
   for qid = 1, boundary:size(1)-1 do -- per query
     local num_pairs = boundary[qid+1]-boundary[qid] --number of query-doc pairs
@@ -65,7 +65,7 @@ function p_30(score, qrels, boundary)
     local sort_score, sort_index = torch.sort(slice_score, true) -- sort score from high to low
     local new_qrels = torch.Tensor(num_pairs)
     local tp = 0
-    for i = 1, math.min(30, num_pairs) do
+    for i = 1, math.min(rank, num_pairs) do
       new_qrels[i] = qrels[boundary[qid]+sort_index[i]]
       if new_qrels[i] >= 1 then
           tp = tp + 1
