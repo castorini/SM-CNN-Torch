@@ -31,6 +31,7 @@ cmd:text('Options')
 cmd:option('-dataset', 'TrecQA', 'dataset, can be TrecQA or WikiQA')
 cmd:option('-version', 'raw', 'the version of TrecQA dataset, can be raw and clean')
 cmd:option('-train', 'train', 'train or train-all')
+cmd:option('-model', 'conv', 'conv or linear')
 cmd:option('-ext', false, 'whether use the external feature')
 cmd:option('-sim', 'bilinear', 'the similarity matrix')
 cmd:text()
@@ -52,10 +53,6 @@ model_structure = model_name
 torch.manualSeed(12345)
 print('<torch> using the automatic seed: ' .. torch.initialSeed())
 
-if opt.dataset ~= 'TrecQA' and opt.dataset ~= 'WikiQA' then
-  print('Error dataset!')
-  os.exit()
-end
 -- directory containing dataset files
 local data_dir = 'data/' .. opt.dataset .. '/'
 
@@ -100,6 +97,11 @@ elseif opt.dataset == 'WikiQA' then
   train_dir = data_dir .. 'train/'
   dev_dir = data_dir .. 'dev/'
   test_dir = data_dir .. 'test/'
+elseif opt.dataset == 'twitter' then
+  train_dir = data_dir .. 'train_2011/'
+  dev_dir = data_dir .. 'dev_2011/'
+  test_dir = data_dir .. 'test_2011/'
+  taskD = 'twitter'  
 end
 
 local train_dataset = similarityMeasure.read_relatedness_dataset(train_dir, vocab, taskD)
@@ -117,6 +119,7 @@ local model = model_class{
   mem_dim    = args.dim,
   task       = taskD,
   ext_feat   = opt.ext,
+  model      = opt.model,
   sim_metric = opt.sim
 }
 

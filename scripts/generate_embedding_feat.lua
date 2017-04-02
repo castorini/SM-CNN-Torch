@@ -22,14 +22,15 @@ end
 print('loading word embeddings')
 --local pretrain_data_dir = 'data/twitter/'
 local taskD = 'twitter'
-local qmax_len = 10
+local qmax_len = 7 -- read the max length of all queries
+print('max len of queries (check with your dataset!): ' .. qmax_len)
 local emb_dir = '/mnt/research-6f/jinfeng/char-lstm/data/glove/'
 local emb_prefix = emb_dir .. 'glove.840B'
 local emb_vocab, emb_vecs = similarityMeasure.read_embedding(emb_prefix .. '.vocab', emb_prefix .. '.300d.th')
 
-data_dir = '../DNN/data/twitter/order_by_rel/'
-local vocab = similarityMeasure.Vocab(data_dir .. 'vocab_2013.txt')
-local word2dfs = similarityMeasure.read_word2df(data_dir .. 'word2dfs_2013.txt', vocab)
+data_dir = 'data/twitter/'
+local vocab = similarityMeasure.Vocab(data_dir .. 'vocab_2011.txt')
+local word2dfs = similarityMeasure.read_word2df(data_dir .. 'word2dfs_2011.txt', vocab)
 local emb_dim = emb_vecs:size(2)
 
 -- use only vectors in vocabulary (not necessary, but gives faster training)
@@ -46,7 +47,7 @@ for i = 1, vocab.size do
 end
 print('unk count = ' .. num_unk)
 
-modes = {'train_2013/', 'dev_2013/', 'test_2013/'}
+modes = {'train_2011/', 'dev_2011/', 'test_2011/'}
 for i = 1, #modes do
   local dataset = similarityMeasure.read_relatedness_dataset(data_dir..modes[i], vocab, taskD)
   print('dir: %s, num = %d\n', modes[i], dataset.size)

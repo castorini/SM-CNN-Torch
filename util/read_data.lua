@@ -10,6 +10,21 @@ function similarityMeasure.read_embedding(vocab_path, emb_path)
   return vocab, embedding
 end
 
+function similarityMeasure.read_word2df(path, vocab)
+  local file = io.open(path, 'r')
+  local word2df = {}
+  while true do
+    local line = file:read()
+    if line == nil then break end
+    local word, df = stringx.split(line)[1], stringx.split(line)[2]
+    if vocab:contains(word) then
+      word2df[vocab:index(word)] = df
+    end
+  end
+  word2df[vocab:index('unk')] = 500 -- explicitly set doc freq of unk word to 500 
+  return word2df
+end
+
 function similarityMeasure.sent2embedding(sent, vocab)
   local tokens = stringx.split(sent)
   local len = #tokens
@@ -125,6 +140,20 @@ function similarityMeasure.read_relatedness_dataset(dir, vocab, task, all_tweets
       dataset.ranks[i] = torch.Tensor(4)
       for j = 1, 4 do  
         dataset.ranks[i][j] = tonumber(wordlap_feat[j])
+      end
+    end
+  end
+  if task == 'twitter' then
+    f_overlap = io.open(dir .. 'dfs_unigram_bigram_sim.txt', 'r')
+    for i = 1, dataset.size do
+      feats = {}
+      for w in f_overlap:read():gmatch("%S+") do
+        table.insert(feats, w)
+      end
+      --print(#feats, feats)
+      dataset.ranks[i] = torch.Tensor(#feats)
+      for j = 1, #feats do
+        dataset.ranks[i][j] = tonumber(feats[j])
       end
     end
   end

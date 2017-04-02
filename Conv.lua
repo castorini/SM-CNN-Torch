@@ -11,6 +11,8 @@ function Conv:__init(config)
   self.task          = config.task          or 'twitter' --'twitter'  -- or 'vid'
   self.ext_feat      = config.ext_feat      or false
   self.sim_metric    = config.sim_metric    or 'bilinear'
+  self.model         = config.model         or 'conv'
+  self.qmax_len      = config.qmax_len      or 7
 	
   -- word embedding
   self.emb_vecs = config.emb_vecs
@@ -20,9 +22,11 @@ function Conv:__init(config)
   if self.ext_feat == true and self.task == 'qa' then
     self.ext_feat_size = 4
   end
-
+  if self.ext_feat == true and self.task == 'twitter' then
+    self.ext_feat_size = 4*self.qmax_len-2
+  end
   -- number of similarity rating classes
-  if self.task=='qa' then
+  if self.task=='qa' or self.task == 'twitter' then
     self.num_classes = 2
   else
     error("not possible task!")
@@ -36,16 +40,20 @@ function Conv:__init(config)
   dofile 'models.lua'
   local modelName = 'SIGIR'
   self.ngram = 5
-  self.length = self.emb_dim
-  self.convModel = createModel(modelName, 10000, self.length, self.num_classes, self.ngram, self.ext_feat_size, self.sim_metric)  
-  --self.linearLayer = self:linearLayer()   
+  self.length = self.emb_dim 
+  if self.model == 'conv' then
+    self.convModel = createModel(modelName, 10000, self.length, self.num_classes, self.ngram, self.ext_feat_size, self.sim_metric)  
+  elseif self.model == 'linear' then
+    print('create fully-connected layer')
+    self.convModel = self:linearLayer()   
+  end
   ----------------------------------------
   self.params, self.grad_params = self.convModel:getParameters()
 end
 
 function Conv:linearLayer()
   local toplayer = nn.Sequential()
-  toplayer:add(nn.Linear(4, 201))
+  toplayer:add(nn.Linear(self.ext_feat_size, 201))
   toplayer:add(nn.Tanh())
   toplayer:add(nn.Dropout(0.5))
   toplayer:add(nn.Linear(201, self.num_classes))
@@ -92,8 +100,11 @@ function Conv:trainCombineOnly(dataset)
         if self.ext_feat == false then
    	  output = self.convModel:forward({linputs, rinputs})
         else
-          output = self.convModel:forward({linputs, rinputs, dataset.ranks[idx]})
-          --output = self.linearLayer:forward(dataset.ranks[idx])
+          if self.model == 'conv' then
+            output = self.convModel:forward({linputs, rinputs, dataset.ranks[idx]})
+          else
+            output = self.convModel:forward(dataset.ranks[idx])
+          end
         end
         local sim_grad = 0
         if self.task == 'vid' or self.task == 'sic' then
@@ -106,8 +117,11 @@ function Conv:trainCombineOnly(dataset)
 	if self.ext_feat == false then
           self.convModel:backward({linputs, rinputs}, sim_grad)
         else
-          self.convModel:backward({linputs, rinputs, dataset.ranks[idx]}, sim_grad)
-          --self.linearLayer:backward(dataset.ranks[idx], sim_grad)
+          if self.model == 'conv' then
+            self.convModel:backward({linputs, rinputs, dataset.ranks[idx]}, sim_grad)
+          else
+            self.convModel:backward(dataset.ranks[idx], sim_grad)
+          end
         end
       end
       -- regularization
@@ -129,8 +143,11 @@ function Conv:predictCombination(lsent, rsent, ext_feat)
   if self.ext_feat == false then
     output = self.convModel:forward({linputs, rinputs})
   else
-    output = self.convModel:forward({linputs, rinputs, ext_feat})
-    --output = self.linearLayer:forward(ext_feat)
+    if self.model == 'conv' then
+      output = self.convModel:forward({linputs, rinputs, ext_feat})
+    else
+      output = self.convModel:forward(ext_feat)
+    end
   end
   local val = -1.0
   if self.task == 'sic' then
