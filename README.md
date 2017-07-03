@@ -29,6 +29,7 @@ $ ``th trainSIGIR15.lua -dataset TrecQA -model linear -ext``
 All model options described in our paper [2] can be specified through the above command line parameters.
 
 Reference 
+---------
 ``[1]. Learning to Rank Short Text Pairs with Convolutional Deep Neural Networks, Aliaksei Severyn and Alessandro Moschi, SIGIR 2015`` 
 
 ``[2]. Experiments with Convolutional Neural Network Models for Answer Selection, Jinfeng Rao, Hua He, and Jimmy Lin, SIGIR 2017``
