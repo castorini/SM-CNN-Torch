@@ -1,22 +1,34 @@
 # Reproduction
-Reproduction of SIGIR15
+This is the repo for the reproduction Torch experiments of the SIGIR'15 convolutional model [1]. More detailed and interesting findings can be found in our paper [2]. 
 
-Can keep updating/using this repo so it is easier to check progress. 
+Getting Started
+-----------
+``1.`` Please install the Torch library by following instructions here: https://github.com/torch/distro
 
-Run linear model with external features on twitter dataset:
+``2.`` Using following script to download and preprocess the Glove word embedding:
+```
+$ sh fetch_and_preprocess.sh
+``` 
+Please make sure your python version >= 2.7, otherwise you will encounter an exception when unzip the downloaded embedding file.
 
-$ ``th trainSIGIR15.lua -dataset twitter -model linear -ext``
+``3.`` Before you run our model, please set the number of threads >= 5 for parallel processing. 
+```
+$ export OMP_NUM_THREADS=5
+```
 
-To get the baseline numbers from original rankings:
+Running
+--------
+Run the original SIGIR'15 model with external IDF features on TrecQA raw dataset:
 
-$ ``th testMap.lua``
+$ ``th trainSIGIR15.lua -dataset TrecQA -version raw -train train-all -model conv -sim bilinear -ext``
 
-# Dataset 
-The original dataset follows certain format:
+Run linear model with external features:
 
-- a.toks (or tokenize_query2.txt): sentence A, each sentence per line.
-- b.toks (or tokenize_doc2.txt): sentence B, each sentence per line.
-- id.txt: sentence pair ID
-- sim.txt: ground truth label, the set of labels will be {0, 1}.
-- numrels.txt: each line is the number of relevant docs for a query
-- boundary.txt: start and end position of docs belonging to a query
+$ ``th trainSIGIR15.lua -dataset TrecQA -model linear -ext``
+
+All model options described in our paper [2] can be specified through the above command line parameters.
+
+# Reference 
+``[1]. . Learning to Rank Short Text Pairs with Convolutional Deep Neural Networks, Aliaksei Severyn and Alessandro Moschi, SIGIR 2015`` 
+
+``[2]. Experiments with Convolutional Neural Network Models for Answer Selection, Jinfeng Rao, Hua He, and Jimmy Lin, SIGIR 2017``
