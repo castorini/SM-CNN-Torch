@@ -64,7 +64,7 @@ print('loading word embeddings')
 
 --local emb_dir = 'data/embedding/'
 --local emb_prefix = emb_dir .. 'aquaint.word2vec'
-local emb_dir = '../char-lstm/data/glove/'
+local emb_dir = 'data/glove/'
 local emb_prefix = emb_dir .. 'glove.840B'
 local emb_vocab, emb_vecs = similarityMeasure.read_embedding(emb_prefix .. '.vocab', emb_prefix .. '.300d.th')
 
