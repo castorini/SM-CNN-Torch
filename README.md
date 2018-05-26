@@ -1,5 +1,8 @@
-# Reproduction
-This is the repo for the reproduction Torch experiments of the SIGIR'15 convolutional model [1]. More detailed and interesting findings can be found in our paper [2]. 
+# Reimplementation of Severyn and Moschitti's CNN for Ranking Short Text Pairs
+
+**NOTE: This repo contains code for the original Torch implementation from SIGIR 2017. The code is not being maintained anymore and has been superseded by a PyTorch reimplementation in [Castor](https://github.com/castorini/Castor). This repo exists solely for archival purposes.**
+
+This repo contains code for the reproduction of Severyn and Moschitti's CNN for Ranking Short Text Pairs from SIGIR 2015 [1]. Our findings were published in a SIGIR 2017 short paper [2].
 
 Getting Started
 -----------
@@ -30,6 +33,7 @@ All model options described in our paper [2] can be specified through the above 
 
 Reference 
 ---------
-``[1]. Learning to Rank Short Text Pairs with Convolutional Deep Neural Networks, Aliaksei Severyn and Alessandro Moschi, SIGIR 2015`` 
 
-``[2]. Experiments with Convolutional Neural Network Models for Answer Selection, Jinfeng Rao, Hua He, and Jimmy Lin, SIGIR 2017``
+[1] Aliaksei Severyn and Alessandro Moschitti. [Learning to Rank Short Text Pairs with Convolutional Deep Neural Networks](https://dl.acm.org/citation.cfm?id=2767738). SIGIR 2015.
+
+[2] Jinfeng Rao, Hua He, and Jimmy Lin. [Experiments with Convolutional Neural Network Models for Answer Selection](https://dl.acm.org/citation.cfm?id=3080648). SIGIR 2017.
